@@ -1,7 +1,10 @@
 version: '3.6'
 
 services:
+
   akhq:
+    # build:
+    #   context: .
     image: tchiotludo/akhq
     environment:
       AKHQ_CONFIGURATION: |
@@ -17,11 +20,8 @@ services:
                   url: "http://connect:8083"
     ports:
       - 8080:8080
-    links:
-      - kafka
-      - schema-registry
-#########################################
-
+    network_mode: host
+#################
   zookeeper:
     container_name: zookeeper
     image: confluentinc/cp-zookeeper
@@ -31,17 +31,16 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: '2181'
       ZOOKEEPER_ADMIN_ENABLE_SERVER: 'false'
-#########################################
-
+    network_mode: host
+#################
   kafka:
-    image: bitnami/kafka
-    hostname: kafka
+    image: confluentinc/cp-kafka
     container_name: kafka
     volumes:
       - kafka-data:/var/lib/kafka:Z
     environment:
       ALLOW_PLAINTEXT_LISTENER: 'true'
-      KAFKA_BROKER_ID: '0'
+      KAFKA_BROKER_ID: '1'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_NUM_PARTITIONS: '12'
       KAFKA_COMPRESSION_TYPE: 'gzip'
@@ -49,29 +48,27 @@ services:
       KAFKA_CREATE_TOPICS: "POC_SPLUNK:1:1:compact"
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://192.168.84.21:9092'
       KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
       KAFKA_JMX_PORT: '9091'
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_AUTHORIZER_CLASS_NAME: 'kafka.security.auth.SimpleAclAuthorizer'
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
-    links:
+    depends_on: 
       - zookeeper
-   # networks:
-   #   - elastic
-
-#########################################
+    network_mode: host
+#################   
   schema-registry:
     image: confluentinc/cp-schema-registry
     depends_on:
       - kafka
     environment:
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka:9092'
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'PLAINTEXT://192.168.84.21:9092'
       SCHEMA_REGISTRY_HOST_NAME: 'schema-registry'
       SCHEMA_REGISTRY_LISTENERS: 'http://0.0.0.0:8085'
       SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: 'INFO'
-#########################################
-
+    network_mode: host
+#################
   connect:
     image: confluentinc/cp-kafka-connect
     depends_on:
@@ -98,14 +95,12 @@ services:
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: '1'
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: '1'
       CONNECT_PLUGIN_PATH: ' /usr/share/java/'
-
-volumes:      
+    network_mode: host
+ #################    
+volumes:
   zookeeper-data:
     driver: local
   zookeeper-log:
     driver: local
   kafka-data:
     driver: local
-#networks:
-#  elastic:
- #   driver: bridge
